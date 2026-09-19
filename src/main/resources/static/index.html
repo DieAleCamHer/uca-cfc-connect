@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UCA-CFC Connect · Iniciar sesión</title>
+<link rel="stylesheet" href="css/theme.css">
+</head>
+<body>
+
+<div class="login-wrapper">
+  <div class="login-card">
+    <div class="login-header">
+      <div class="marca">Universidad Centroamericana José Simeón Cañas</div>
+      <h1>Centro de Formación Continua</h1>
+    </div>
+    <div class="login-body">
+
+      <div class="tabs">
+        <button class="tab-btn activo" id="tabLoginBtn" onclick="mostrarTab('login')">Iniciar sesión</button>
+        <button class="tab-btn" id="tabRegistroBtn" onclick="mostrarTab('registro')">Crear cuenta</button>
+      </div>
+
+      <div id="loginError" class="error-box"></div>
+      <div id="loginOk" class="ok-box"></div>
+
+      <form id="formLogin">
+        <div class="form-group">
+          <label for="loginEmail">Correo electrónico</label>
+          <input type="email" id="loginEmail" required placeholder="usuario@correo.com">
+        </div>
+        <div class="form-group">
+          <label for="loginPassword">Contraseña</label>
+          <input type="password" id="loginPassword" required placeholder="••••••••">
+        </div>
+        <button type="submit" class="btn btn-primario">Ingresar</button>
+      </form>
+
+      <form id="formRegistro" style="display:none">
+        <div class="form-group">
+          <label for="regNombre">Nombre completo</label>
+          <input type="text" id="regNombre" required placeholder="Nombre y apellido">
+        </div>
+        <div class="form-group">
+          <label for="regEmail">Correo electrónico</label>
+          <input type="email" id="regEmail" required placeholder="usuario@correo.com">
+        </div>
+        <div class="form-group">
+          <label for="regPassword">Contraseña</label>
+          <input type="password" id="regPassword" required minlength="6" placeholder="Mínimo 6 caracteres">
+        </div>
+        <div class="form-hint" style="margin-bottom:14px">
+          Las cuentas nuevas se crean con rol Cliente. Cuentas de personal (administración,
+          recepción, contabilidad) las crea un administrador desde el sistema.
+        </div>
+        <button type="submit" class="btn btn-primario">Crear cuenta</button>
+      </form>
+
+    </div>
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script src="js/login.js"></script>
+</body>
+</html>
