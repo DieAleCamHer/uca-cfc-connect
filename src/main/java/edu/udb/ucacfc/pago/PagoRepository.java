@@ -1,0 +1,17 @@
+package edu.udb.ucacfc.pago;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+import java.util.Optional;
+
+public interface PagoRepository extends JpaRepository<Pago, Long> {
+
+    List<Pago> findByTipoReferenciaAndReferenciaId(TipoReferenciaPago tipoReferencia, Long referenciaId);
+
+    List<Pago> findByEstado(EstadoPago estado);
+
+    // Util cuando se espera un unico pago "maestro" por referencia (ej. una inscripcion)
+    Optional<Pago> findFirstByTipoReferenciaAndReferenciaIdOrderByIdDesc(
+            TipoReferenciaPago tipoReferencia, Long referenciaId);
+}
