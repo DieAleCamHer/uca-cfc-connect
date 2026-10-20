@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ingresar - UCA-CFC Connect</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div class="auth-wrap">
+  <div class="card auth-card">
+    <div class="brand" style="color:var(--azul)"><div class="logo">CFC</div><div>UCA-CFC Connect</div></div>
+    <div class="tabs">
+      <button class="tab activo" data-tab="login">Iniciar sesion</button>
+      <button class="tab" data-tab="registro">Crear cuenta</button>
+      <button class="tab" data-tab="recuperar">Olvide mi contrasena</button>
+    </div>
+    <div id="mensaje"></div>
+
+    <form id="formLogin" class="panel" novalidate>
+      <div class="campo"><label>Correo</label><input type="email" name="email" autocomplete="username" required></div>
+      <div class="campo" style="margin-top:.7rem"><label>Contrasena</label><input type="password" name="password" autocomplete="current-password" required></div>
+      <button class="btn btn-primary" style="margin-top:1rem;width:100%" type="submit">Entrar</button>
+      <p class="small muted" style="margin-top:1rem">Usuarios de prueba: admin@ucacfc.edu.sv / Admin12345 · recepcion@ucacfc.edu.sv / Recepcion2026 ·
+        contabilidad@ucacfc.edu.sv / Conta2026 · ana.perez@correo.com / Cliente2026</p>
+    </form>
+
+    <form id="formRegistro" class="panel hidden form-grid" novalidate>
+      <div class="campo"><label>Tipo de cliente</label><select name="tipo"><option value="PERSONA">Persona</option><option value="EMPRESA">Empresa</option></select></div>
+      <div class="campo"><label>DUI / NIT</label><input name="duiNit" placeholder="01234567-8" required></div>
+      <div class="campo full" id="campoEmpresa" style="display:none"><label>Razon social</label><input name="empresa"></div>
+      <div class="campo"><label>Nombre completo</label><input name="nombre" required></div>
+      <div class="campo"><label>Telefono</label><input name="telefono" placeholder="7123-4567" required></div>
+      <div class="campo"><label>Correo</label><input type="email" name="email" required></div>
+      <div class="campo"><label>Contrasena</label><input type="password" name="password" required><span class="ayuda">8+ caracteres con letras y numeros</span></div>
+      <div class="campo full"><label>Direccion</label><input name="direccion"></div>
+      <button class="btn btn-primary full" type="submit">Crear cuenta</button>
+    </form>
+
+    <div id="panelRecuperar" class="panel hidden">
+      <form id="formRecuperar" novalidate>
+        <p class="small muted">Te enviaremos un enlace para restablecer tu contrasena (valido 30 minutos).</p>
+        <div class="campo"><label>Correo</label><input type="email" name="email" required></div>
+        <button class="btn btn-primary" style="margin-top:.8rem" type="submit">Enviar enlace</button>
+      </form>
+      <form id="formRestablecer" style="margin-top:1.2rem" novalidate>
+        <h3>¿Ya tienes el codigo?</h3>
+        <div class="campo"><label>Codigo de recuperacion</label><input name="token" required></div>
+        <div class="campo" style="margin-top:.6rem"><label>Nueva contrasena</label><input type="password" name="nuevaPassword" required></div>
+        <button class="btn" style="margin-top:.8rem" type="submit">Restablecer contrasena</button>
+      </form>
+    </div>
+    <p style="margin-top:1rem"><a href="index.html">← Ver la oferta academica</a></p>
+  </div>
+</div>
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/login.js"></script>
+</body>
+</html>

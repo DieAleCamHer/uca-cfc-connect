@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>UCA-CFC Connect - Centro de Formacion Continua</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<header class="hero">
+  <nav class="publico-nav">
+    <div class="brand" style="margin:0"><div class="logo">CFC</div><div>UCA-CFC Connect</div></div>
+    <div class="spacer"></div>
+    <a class="btn" id="lnkSwagger" href="swagger-ui.html" target="_blank">API (Swagger)</a>
+    <a class="btn" href="login.html" id="btnEntrar">Iniciar sesion</a>
+    <a class="btn btn-primary" href="login.html?tab=registro">Crear cuenta</a>
+  </nav>
+  <div class="contenedor" style="padding-top:0">
+    <h1>Centro de Formacion Continua</h1>
+    <p>Cursos especializados, diplomados, alquiler de auditorios, salas y laboratorios, y servicio de catering para eventos
+      academicos y corporativos. Registrate para inscribirte, reservar o solicitar una cotizacion.</p>
+  </div>
+</header>
+<main class="contenedor">
+  <div class="tabs" id="tabs">
+    <button class="tab activo" data-tab="cursos">Cursos</button>
+    <button class="tab" data-tab="diplomados">Diplomados</button>
+    <button class="tab" data-tab="espacios">Espacios</button>
+    <button class="tab" data-tab="catering">Catering</button>
+  </div>
+  <div class="filtros" id="filtros">
+    <div class="campo"><label>Buscar</label><input id="q" placeholder="Nombre..."></div>
+    <div class="campo"><label>Categoria</label><select id="categoria"><option value="">Todas</option></select></div>
+    <div class="campo"><label>Modalidad</label><select id="modalidad"><option value="">Todas</option></select></div>
+  </div>
+  <div class="grid grid-3" id="resultado"></div>
+</main>
+<div id="toasts"></div>
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/publico.js"></script>
+</body>
+</html>
