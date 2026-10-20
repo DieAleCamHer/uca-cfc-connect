@@ -1,217 +1,241 @@
-# UCA-CFC Connect
+# UCA-CFC Connect 2.0 — Proyecto de cátedra DWF404
 
-Proyecto de Cátedra — Desarrollo de Aplicaciones con Web Frameworks (DWF404), Universidad Don Bosco, Ciclo II-2026.
+Sistema web del **Centro de Formación Continua de la UCA**: oferta académica, clientes, inscripciones,
+cotizaciones, alquiler de espacios, catering, agenda institucional, pagos y seguridad.
 
-Es un sistema de gestión para el Centro de Formación Continua de la UCA. Maneja cursos y diplomados, clientes, inscripciones, cotizaciones, alquiler de espacios, catering, agenda institucional, pagos y seguridad.
+**Stack:** Spring Boot 3.3.4 · Java 21 · Maven · Spring Data JPA / Hibernate · MySQL · Spring Security + JWT (jjwt 0.12.6)
+· springdoc-openapi 2.6.0 · JUnit 5 + Mockito · Frontend HTML/CSS/JS puro (lo sirve el backend o Live Server, con CORS habilitado).
 
-## Estado actual
+---
 
-Hasta ahora el proyecto tiene:
+## 1. Cómo correrlo
 
-- Proyecto Maven configurado, con perfiles `dev` y `prod` para MySQL
-- Las entidades JPA de los 9 módulos
-- 15 interfaces Repository
-- 18 servicios (interfaz + implementación) con la lógica de negocio
-- Controllers REST, DTOs, validaciones y manejo global de errores
-- Pruebas unitarias con JUnit 5 y Mockito (15 servicios, 59 métodos de test)
-- Seguridad con Spring Security + JWT + roles
+1. **MySQL** encendido en `localhost:3306`. La base `ucacfc` se crea sola (`createDatabaseIfNotExist=true`) y las tablas
+   las crea Hibernate (`ddl-auto=update`). Si tu usuario/clave no es `root/root`, cámbialo en
+   `src/main/resources/application.properties` o con las variables `DB_USERNAME` / `DB_PASSWORD`.
+   > Si vienes de la versión anterior, usa una base nueva (`ucacfc`) — el modelo cambió.
+2. Abrir la carpeta en IntelliJ → recargar Maven → ejecutar `UcaCfcConnectApplication`.
+3. Abrir **http://localhost:8080** (frontend) o **http://localhost:8080/swagger-ui.html** (API).
+4. *(Opcional, igual que el Desafío 3)* Abrir `src/main/resources/static` en VS Code → clic derecho en `index.html` →
+   **Open with Live Server** (`http://127.0.0.1:5500`). El frontend detecta que no está en el puerto 8080 y llama a
+   `http://localhost:8080` (cambiar `BACKEND_REMOTO` en `js/config.js` si el backend está en otra dirección); el
+   navegador aplica CORS y el backend lo permite con `CorsConfig`.
 
-Lo único que falta terminar es afinar algunos detalles de seguridad del Bloque 6.
+Al primer arranque se crea el administrador y, si la base está vacía, datos de ejemplo (catálogos, 2 cursos, 1 diplomado,
+5 espacios, 5 servicios de catering, 1 cliente persona con cuenta y 1 cliente empresa de mostrador):
 
-## Qué necesitas para correrlo
-
-Todo es gratis:
-
-1. JDK 21 — https://adoptium.net/ (Eclipse Temurin)
-2. MySQL Community Server — https://dev.mysql.com/downloads/mysql/
-3. IntelliJ IDEA (sirve la versión Community)
-4. Maven ya viene integrado en IntelliJ, no hay que instalarlo aparte
-
-## Cómo levantarlo
-
-### 1. Preparar la base de datos
-
-Desde una terminal de MySQL o MySQL Workbench:
-
-```sql
-CREATE DATABASE ucacfc_dev CHARACTER SET utf8mb4;
-```
-
-Si tu usuario o contraseña de MySQL no son `root`/`root`, cambia eso en `src/main/resources/application-dev.properties`.
-
-### 2. Abrir el proyecto
-
-`File → Open` en IntelliJ y seleccionas la carpeta `uca-cfc-connect`. Va a detectar el `pom.xml` solo y descargar las dependencias (necesitas internet la primera vez que lo abras).
-
-### 3. Revisar que Lombok esté habilitado
-
-En `File → Settings → Build, Execution, Deployment → Compiler → Annotation Processors`, marca "Enable annotation processing" si no lo tenías ya activado.
-
-### 4. Ejecutar
-
-Corres la clase `UcaCfcConnectApplication`. Con el perfil `dev` (que es el que está activo por defecto), Hibernate crea automáticamente las tablas en `ucacfc_dev` a partir de las entidades.
-
-Si quieres correr con el perfil `prod`, vas a `Run → Edit Configurations → Environment variables` y pones `SPRING_PROFILES_ACTIVE=prod` (y antes creas la base `ucacfc_prod` igual que hiciste con la de dev).
-
-### 5. Confirmar que arrancó bien
-
-En el log debería aparecer `Started UcaCfcConnectApplication`. Si entras a MySQL y corres `SHOW TABLES;` en `ucacfc_dev`, deberías ver: `usuarios`, `clientes`, `categorias`, `modalidades`, `docentes`, `cursos`, `diplomados`, `inscripciones`, `espacios`, `reservas_espacio`, `servicios_catering`, `solicitudes_catering`, `cotizaciones`, `actividades_agenda`, `pagos`.
-
-Todavía no hay endpoints REST en esta parte (eso viene en el Bloque 4), por ahora solo queda funcionando el modelo de datos.
-
-## Reglas de negocio
-
-Algunas de las validaciones más importantes que ya están implementadas:
-
-- **Sin cruces de horario**: `ReservaEspacioService` revisa contra su propia tabla y además sincroniza con `AgendaService`, que valida contra toda la agenda institucional (no solo contra los alquileres de espacio).
-- **Cupo máximo**: `InscripcionService` cuenta las inscripciones activas de un curso o diplomado y rechaza si ya no hay cupo, lanzando `CupoExcedidoException`.
-- **Curso o Diplomado, no ambos**: una inscripción tiene que apuntar a uno de los dos, nunca a los dos ni a ninguno.
-- **Fechas y horas coherentes**: no se puede poner una fecha fin antes que la de inicio, ni cupo o costo en negativo.
-- **Sin duplicados**: email de usuario, DUI/NIT de cliente, nombre de categoría o modalidad, todos lanzan `RegistroDuplicadoException` si ya existen.
-- **Pagos parciales**: `PagoService.abonar(...)` recalcula el estado del pago (PENDIENTE → PARCIAL → PAGADO) según lo que se ha abonado, y no deja abonar más de lo que falta.
-- **Contraseñas**: nunca se guardan en texto plano, se hashean con BCrypt antes de guardarlas.
-
-Todas las excepciones de negocio están en `edu.udb.ucacfc.shared.exception`. En el Bloque 4 se conectan a códigos HTTP reales con `@ControllerAdvice`.
-
-## Pruebas unitarias
-
-El lineamiento pedía JUnit 5 + Mockito probando la lógica sin tocar la base de datos real, así que todos los Repository están mockeados con `@Mock`.
-
-Para correrlas desde IntelliJ: clic derecho en `src/test/java` → Run Tests. O desde terminal con `mvn test` (si no tienes Maven en el PATH, usa el Maven integrado de IntelliJ: panel derecho → Maven → uca-cfc-connect → Lifecycle → test).
-
-| Clase de test | Qué prueba |
-|---|---|
-| `ReservaEspacioServiceImplTest` | La regla central del proyecto: crea o rechaza reservas según cruce de horario, valida fechas y si sincroniza con la agenda |
-| `InscripcionServiceImplTest` | Cupo máximo, regla de curso o diplomado |
-| `PagoServiceImplTest` | Cálculo automático del estado del pago, rechazo de abonos de más |
-| `AgendaServiceImplTest` | Cruces de horario a nivel de toda la agenda institucional |
-| `ClienteServiceImplTest` | Unicidad de DUI/NIT, recurso no encontrado |
-| `CursoServiceImplTest` | Validaciones de fechas, horas, cupo y costo |
-
-Si hace falta agregar pruebas para otros módulos (Cotización, Catering, Usuario), el patrón es siempre el mismo: `@ExtendWith(MockitoExtension.class)`, un `@Mock` por cada Repository que use el Service, `@InjectMocks` para el Service, y `when(...).thenReturn(...)` simulando lo que devolvería la base de datos.
-
-## Frontend
-
-Se agregó un frontend real (no solo Swagger) porque el equipo confirmó que sí se pedía. Está en `src/main/resources/static/` y Spring Boot lo sirve solo, sin servidor aparte ni Node ni npm: al arrancar la app entras directo a http://localhost:8080/.
-
-### Cómo está armado
-
-En vez de hacer una pantalla distinta para cada uno de los 9 módulos, se hizo un motor CRUD genérico:
-
-- `js/config.js` declara los 15 módulos: qué campos tiene cada uno, qué endpoint usan, y qué rol puede leer, crear, editar o borrar cada uno. Esto tiene que reflejar lo mismo que está en `SecurityConfig.java` del backend, así que si cambian los roles allá hay que actualizarlo aquí también.
-- `js/crud.js` es el motor: lee la configuración de arriba y genera la tabla, el formulario y las validaciones. Así, agregar un módulo nuevo es agregar un objeto en `config.js`, no escribir HTML a mano.
-- `js/api.js` centraliza el JWT en cada request y traduce los errores que manda el backend.
-- `js/app.js` arma el menú lateral según el rol de quien inició sesión (un CLIENTE no ve "Usuarios", pero CONTABILIDAD sí ve "Pagos").
-- `css/theme.css` tiene los colores institucionales (azul oscuro, dorado, blanco).
-
-No se usó el logo real de la UCA para evitar temas de derechos de la marca, es un diseño inspirado en su paleta de colores.
-
-### Casos especiales en el frontend
-
-- Inscripciones, cotizaciones y solicitudes de catering no tienen botón de editar (el backend no expone PUT para esos, solo PATCH del estado), en su lugar hay un selector para cambiar estado.
-- En reservas de espacio, el botón de borrar dice "Cancelar". Si intentas crear una reserva con horario cruzado, sale el error de `EspacioOcupadoException` directo en pantalla.
-- Agenda es de solo lectura, con un selector de rango de fechas.
-- Pagos se busca por estado o por referencia, no hay "listar todos" en el backend. Las filas con saldo pendiente tienen botón de "Abonar".
-- Usuarios no pide contraseña al editar (se agregó `UsuarioUpdateRequestDTO` en el backend sin ese campo).
-
-### Cómo probarlo
-
-1. Corre la app (`UcaCfcConnectApplication`)
-2. Entra a http://localhost:8080/
-3. Crea una cuenta de CLIENTE de prueba, o usa tu ADMIN si ya lo tienes
-4. Inicia sesión y el menú se arma solo según tu rol
-
-## Seguridad con JWT
-
-Se implementó con `Usuario implements UserDetails`, `UsuarioDetailsServiceImpl`, `JwtService` (con la librería jjwt) y `JwtAuthenticationFilter` que intercepta cada request. Se hizo antes de la guía oficial de la Unidad 4, así que si el estilo de la profesora pide otra estructura, es un ajuste sobre algo que ya funciona y está probado.
-
-### Login
-
-```
-POST /api/auth/login
-{
-  "email": "admin@ucacfc.com",
-  "password": "clave123"
-}
-```
-
-Devuelve un `token` que hay que mandar en cada request protegido: `Authorization: Bearer <token>`. En Swagger UI hay un botón Authorize donde pegas `Bearer <token>` una vez y queda aplicado a todos los endpoints.
-
-### Crear el primer usuario ADMIN
-
-Como `/api/usuarios` ahora exige ser ADMIN para crear usuarios, pero el primer ADMIN todavía no existe, hay que hacer un paso manual. Lo más fácil es crear un CLIENTE de prueba con `/api/auth/registro` y luego en MySQL:
-
-```sql
-UPDATE usuarios SET rol = 'ADMIN' WHERE email = 'tu-primer-usuario@correo.com';
-```
-
-Otra opción, si no quieres tocar MySQL directo, es comentar temporalmente la línea `.requestMatchers("/api/usuarios/**").hasRole("ADMIN")` en `SecurityConfig`, crear el primer ADMIN con `POST /api/usuarios`, y volver a descomentarla.
-
-### Roles por ruta
-
-| Ruta | Quién puede |
-|---|---|
-| `/api/auth/**` | Público, sin token |
-| `/api/usuarios/**` | Solo ADMIN |
-| Catálogos (categorías, modalidades, docentes, cursos, diplomados, espacios, servicios de catering) — GET | Cualquier usuario autenticado |
-| Catálogos — POST/PUT | ADMIN, RECEPCIONISTA |
-| Catálogos — DELETE | Solo ADMIN |
-| Clientes, inscripciones, reservas de espacio, solicitudes de catering, cotizaciones | ADMIN, RECEPCIONISTA, CLIENTE |
-| Agenda (solo lectura) | Cualquier usuario autenticado |
-| Pagos | ADMIN, CONTABILIDAD |
-
-Esto está centralizado en `SecurityConfig.java`, así que si el equipo necesita ajustarlo según lo que pida la guía oficial, se cambia en un solo lugar sin tocar los Controllers.
-
-Un detalle que vale la pena mencionar en la defensa: `POST /api/auth/registro` (el auto-registro público) siempre fuerza el rol a CLIENTE sin importar qué rol venga en el JSON, para que nadie pueda auto-registrarse como ADMIN. Crear cuentas de personal (RECEPCIONISTA, CONTABILIDAD, ADMIN) solo lo puede hacer un ADMIN ya logueado, vía `POST /api/usuarios`.
-
-## Probar la API
-
-Con la app corriendo, entras a http://localhost:8080/swagger-ui.html y ahí puedes ver y probar todos los endpoints sin instalar nada más.
-
-Nota: por ahora `SecurityConfig` deja todo abierto con `permitAll`, porque la dependencia de seguridad ya está en el `pom.xml` pensando en el Bloque 6 pero sin JWT real todavía no se puede exigir login en todo.
-
-### Endpoints
-
-| Módulo | Base path | Notas |
+| Rol | Correo | Contraseña |
 |---|---|---|
-| Usuarios | `/api/usuarios` | password se hashea con BCrypt |
-| Clientes | `/api/clientes` | `?nombre=` para buscar |
-| Categorías | `/api/categorias` | catálogo |
-| Modalidades | `/api/modalidades` | catálogo |
-| Docentes | `/api/docentes` | catálogo |
-| Cursos | `/api/cursos` | `?soloActivos=true` |
-| Diplomados | `/api/diplomados` | `?soloActivos=true` |
-| Inscripciones | `/api/inscripciones` | POST valida cupo; `PATCH /{id}/estado?estado=` |
-| Espacios | `/api/espacios` | `?soloDisponibles=true` |
-| Reservas de espacio | `/api/reservas-espacio` | el endpoint más importante: si creas dos reservas del mismo espacio con horario cruzado, la segunda debe dar 409 |
-| Servicios de catering | `/api/servicios-catering` | catálogo |
-| Solicitudes de catering | `/api/solicitudes-catering` | `PATCH /{id}/estado?estado=` |
-| Cotizaciones | `/api/cotizaciones` | `PATCH /{id}/estado?estado=` |
-| Agenda | `/api/agenda?desde=YYYY-MM-DD&hasta=YYYY-MM-DD` | solo lectura |
-| Pagos | `/api/pagos` | `PATCH /{id}/abonar` recalcula el estado solo |
+| ADMIN | admin@ucacfc.edu.sv | Admin12345 |
+| RECEPCIONISTA | recepcion@ucacfc.edu.sv | Recepcion2026 |
+| CONTABILIDAD | contabilidad@ucacfc.edu.sv | Conta2026 |
+| CLIENTE | ana.perez@correo.com | Cliente2026 |
 
-### Orden sugerido para probar todo de una vez
+Pruebas: clic derecho en `src/test/java` → *Run Tests* (Mockito puro, no necesitan MySQL).
+Entrega: `mvn clean` y comprimir la carpeta raíz (la que tiene `pom.xml`).
 
-1. Crear una Categoría, una Modalidad y un Docente
-2. Crear un Curso referenciando esos ids
-3. Crear un Cliente
-4. `POST /api/inscripciones` con `clienteId` y `cursoId`
-5. Crear un Espacio
-6. `POST /api/reservas-espacio` dos veces con el mismo `espacioId` y horarios cruzados, para confirmar el 409 con el mensaje de `EspacioOcupadoException`
-7. `GET /api/agenda?desde=...&hasta=...` para ver que la actividad también se refleja ahí
+### Swagger con candado
+1. `POST /api/auth/login` (no lleva candado) → copiar `accessToken`.
+2. Botón **Authorize** → pegar **solo el token** (Swagger agrega `Bearer `). `persist-authorization` lo conserva al recargar.
+3. Cada endpoint muestra en su descripción qué rol lo usa, qué reglas aplica, los campos de filtro y los campos válidos para `sort`.
+   Las respuestas de error (400/401/403/404/409/500) se documentan solas con el esquema `ErrorResponse`.
 
-## Estructura de paquetes
+---
+
+## 2. Arquitectura
 
 ```
-edu.udb.ucacfc
- ├── shared       → utilidades comunes (auditoría automática, excepciones globales)
- ├── seguridad    → Usuario, Rol
- ├── cliente      → Cliente
- ├── academico    → Categoria, Modalidad, Docente, Curso, Diplomado
- ├── inscripcion  → Inscripcion
- ├── cotizacion   → Cotizacion
- ├── espacio      → Espacio, ReservaEspacio
- ├── catering     → ServicioCatering, SolicitudCatering
- ├── agenda       → ActividadAgenda (tabla central para validar cruces de horario)
- └── pago         → Pago
+Controller  (REST, @Valid, @PreAuthorize por rol, sin lógica)
+   └─ Service  (reglas de negocio, @Transactional, dueño del registro, cálculo de costos)
+        └─ Repository  (JpaRepository + JpaSpecificationExecutor: filtros dinámicos)
+             └─ Entity → MySQL
+Entra un RequestDTO (record con Bean Validation), sale un ResponseDTO. La entidad nunca sale por la API.
 ```
+
+| Paquete | Contenido |
+|---|---|
+| `shared` | excepciones + `GlobalExceptionHandler`, paginación (`PaginaRequest`, `PageResponse`, `PaginacionUtil`), `MaquinaEstados`, `Horarios`, Swagger, `Clock`, datos iniciales, `AccesoService` (dueño del registro), `Permisos` (expresiones de `@PreAuthorize`) |
+| `seguridad` | `Usuario`/`Rol`, JWT (filtro, servicio, 401/403 JSON), `SecurityConfig`, auth (login, registro, refresh, logout, recuperación), administración de usuarios y roles |
+| `academico` | categorías, modalidades, docentes, cursos y diplomados (lógica común en `OfertaAcademicaService`) |
+| `cliente` | fichas de cliente (persona/empresa), acceso web, historial (RF14) |
+| `inscripcion` | inscripciones + cascada al dar de baja una oferta |
+| `espacio` | espacios, disponibilidad (RF09) y reservas/alquileres (RF07) |
+| `catering` | servicios y solicitudes (RF08) |
+| `cotizacion` | cotizaciones con líneas (RF05, RF06) |
+| `agenda` | calendario institucional + eventos del CFC (RF13) |
+| `pago` | cuentas por cobrar, abonos, validación, comprobantes (RF10, RF15) |
+| `cierre` | cierre y vencimiento automáticos (tarea cada 15 min) |
+| `reporte` | resumen operativo y estado financiero |
+| `publico` | oferta vigente sin token para la página de inicio |
+
+---
+
+## 3. Seguridad en tres capas
+
+| Capa | Dónde | Responde | Ejemplo |
+|---|---|---|---|
+| 1. Token | `JwtAuthenticationFilter` | 401 con `code` | `NO_TOKEN`, `TOKEN_EXPIRED`, `TOKEN_INVALID`, `TOKEN_WRONG_TYPE`, `TOKEN_REVOKED`, `ACCOUNT_DISABLED` |
+| 2. Rol | `@PreAuthorize(Permisos.X)` en cada método | 403 `ACCESS_DENIED` | RECEPCIONISTA intenta `PATCH /api/cotizaciones/{id}/aprobar` |
+| 3. Dueño | `AccesoService` en los services | 403 `FORBIDDEN_OPERATION` | un CLIENTE pide `GET /api/reservas/7` de otro cliente |
+
+- `SecurityConfig` solo define lo público (`/api/auth/login|registro|refresh|recuperar|restablecer`, `/api/publico/**`,
+  Swagger y el frontend estático) y que el resto de `/api/**` exige token. **El rol lo decide `@PreAuthorize`**: así cada
+  regla se lee junto al endpoint y los services no repiten `if (rol == ...)`.
+- Acciones de estado como endpoints separados (`/confirmar`, `/aprobar`, `/rechazar`...) para que cada una tenga su propio
+  `@PreAuthorize`; el service solo valida la máquina de estados y el dueño.
+- **Access token** 30 min + **refresh token** 7 días (`POST /api/auth/refresh`). El frontend renueva solo al recibir `TOKEN_EXPIRED`.
+- **Logout real**: `tokenVersion` en el usuario; logout, cambio de contraseña, cambio de rol o desactivación lo incrementan y
+  todos los tokens anteriores quedan revocados al instante. El rol se relee de la BD en cada petición.
+- **Recuperación de contraseña**: token aleatorio de un solo uso (30 min), en BD solo se guarda su SHA-256; la respuesta es
+  igual exista o no el correo. Sin servidor de correo, en modo académico el token se devuelve como `tokenDemo` y se escribe en el log.
+- Login: una cuenta desactivada solo se informa **después** de comprobar la contraseña (no revela qué cuentas existen).
+- El registro público **siempre** crea rol CLIENTE (si alguien envía `"rol"`, Jackson responde 400 por campo desconocido).
+- Contraseñas BCrypt, mínimo 8 caracteres con letras y números.
+- **CORS** (`seguridad/CorsConfig` + `.cors(Customizer.withDefaults())` en `SecurityConfig`), igual que en el Desafío 3:
+  - El bean se llama `corsConfigurationSource`: así Spring Security lo encuentra y pone el `CorsFilter` **al principio**
+    de la cadena. Los preflight `OPTIONS` (que el navegador manda sin token) se responden antes del filtro JWT, y las
+    respuestas 401/403 también llevan las cabeceras CORS, de modo que el frontend puede leer el JSON de error.
+  - Métodos GET, POST, PUT, PATCH, DELETE, OPTIONS; headers `Authorization`, `Content-Type`, `Accept`; preflight cacheado 1 h.
+  - `allowCredentials(false)` porque el token va en un header y no en cookies, por eso se permite `*`. Para restringir:
+    `app.cors.allowed-origins=http://localhost:5500,http://127.0.0.1:5500` (o la variable `CORS_ORIGINS`).
+  - `OPTIONS /**` con `permitAll` queda como respaldo.
+
+### Matriz de permisos
+
+| Módulo | ADMIN | RECEPCIONISTA | CLIENTE | CONTABILIDAD |
+|---|---|---|---|---|
+| Usuarios y roles | todo | — | — | — |
+| Categorías, modalidades, docentes, espacios, servicios | todo | ver | ver | ver |
+| Cursos / diplomados | todo | ver, crear, editar | ver | ver |
+| Clientes | todo | ver, crear, editar, crear acceso | su ficha (`/me`) e historial | — |
+| Inscripciones, reservas, catering | todo | todo menos lo de ADMIN | crear, ver, editar y cancelar **lo suyo** | — |
+| Cotizaciones | todo, **aprobar** | registrar, elaborar, rechazar | solicitar, editar (pendiente), retirar lo suyo | — |
+| Agenda / eventos | ver, programar eventos | ver, programar eventos | ver (sin alquileres/catering ajenos) | — |
+| Pagos | todo | ver, registrar abonos (efectivo/tarjeta quedan confirmados) | ver lo suyo, reportar transferencia/depósito | ver, registrar, **validar**, anular, comprobantes |
+| Reportes | resumen y financiero | — | — | financiero |
+
+---
+
+## 4. Reglas de negocio por módulo
+
+> Marcadas con ➕ las que **no pide el documento** pero se agregaron para que el sistema sea coherente en todos los casos.
+
+### Académico
+- **Categoría / modalidad**: nombre único (sin mayúsculas). Desactivar no afecta ofertas existentes; impide usarlas en ofertas nuevas.
+- ➕ **Modalidad**: no se cambia `requiereEspacioFisico` si tiene ofertas vigentes (dejaría cursos virtuales con aula).
+- **Docente**: correo y teléfono únicos. ➕ No se desactiva con ofertas vigentes asignadas.
+- **Curso / diplomado** (lógica compartida):
+  - 1 a 200 **sesiones** de 30 min a 12 h, que no se cruzan entre sí; todas futuras al crear. `inicio`/`fin` de la oferta son el resumen.
+  - Categoría, modalidad y docente existen y están activos (un catálogo desactivado se acepta solo si la oferta ya lo tenía).
+  - **Presencial** → espacio obligatorio, activo, con capacidad ≥ cupo. **Virtual** → no puede tener espacio (400).
+  - Nombre + categoría + fecha de inicio únicos (otra fecha = otra edición).
+  - **Docente**: no puede tener otra oferta vigente con sesiones cruzadas (409 `TEACHER_BUSY`); las ofertas desactivadas o terminadas no lo ocupan. ➕ Se bloquea la fila del docente al validar (concurrencia).
+  - **Espacio**: se registra en la agenda **una vez por sesión**; si una sola choca, no se guarda nada (409 `SPACE_OCCUPIED`).
+  - ➕ Editar: antes de iniciar se puede cambiar todo (se reprograma la agenda); ya iniciada solo nombre, descripción, cupo y costo; terminada o desactivada es solo lectura. El cupo nunca baja de las inscripciones vigentes. El costo nuevo solo aplica a inscripciones futuras.
+  - **Desactivar** (ADMIN) antes de terminar: cancela inscripciones vigentes, anula sus cuentas y libera la agenda — **todo o nada**: si una tiene dinero cobrado o en validación, 409 y no cambia nada. Ya terminada: solo se oculta.
+  - **Reactivar**: revalida catálogos, docente y espacio y vuelve a ocupar la agenda; las inscripciones canceladas no vuelven.
+
+### Clientes
+- Tipo **PERSONA** (DUI o NIT) o **EMPRESA** (NIT de 14 dígitos + razón social). DUI/NIT, correo y teléfono únicos.
+- ➕ El tipo no se cambia después de creado.
+- ➕ Una cuenta CLIENTE siempre va unida a una ficha: el registro público crea las dos en una transacción; un cliente de mostrador recibe acceso con `POST /api/clientes/{id}/cuenta`.
+- ➕ No se desactiva un cliente con procesos vigentes o saldo pendiente; desactivarlo bloquea su cuenta de acceso.
+- **Historial (RF14)**: conteo por estado de cada módulo, facturado/pagado/saldo y últimos movimientos.
+
+### Inscripciones
+- Curso **o** diplomado (exactamente uno); cliente y oferta activos; la oferta no terminó.
+- ➕ **Participantes**: una PERSONA se inscribe a sí misma; una EMPRESA inscribe colaboradores (nombre + DUI), cada uno una vez por oferta.
+- **Cupo**: PENDIENTE y CONFIRMADA ocupan cupo (409 `CAPACITY_EXCEEDED`). ➕ La fila de la oferta se bloquea al contar: dos inscripciones simultáneas no superan el cupo.
+- ➕ El **monto se congela** al inscribirse.
+- `PENDIENTE → CONFIRMADA → FINALIZADA`; `PENDIENTE/CONFIRMADA → CANCELADA`.
+  Confirmar (personal) **genera la cuenta por cobrar**. Finalizar exige oferta terminada y cuenta PAGADA.
+  ➕ Un CLIENTE cancela solo antes de que inicie la oferta. Editar solo en PENDIENTE (cambiar de oferta o participante).
+
+### Alquiler de espacios
+- Espacio activo, futura, de 30 min a 12 h, asistentes ≤ capacidad. **Costo = horas × precio por hora** (calculado y congelado).
+- La **agenda** valida que no choque con cursos, diplomados, eventos, otras reservas ni catering.
+- `SOLICITADA` ya aparta el espacio → `CONFIRMADA` (genera la cuenta) → `COMPLETADA` (horario terminado + pagada);
+  `SOLICITADA → RECHAZADA` (motivo); `SOLICITADA/CONFIRMADA → CANCELADA`.
+- ➕ El CLIENTE cancela hasta 24 h antes; el personal hasta el inicio. No se cancela con un catering vigente dentro.
+- **Disponibilidad (RF09)**: libre/ocupado por espacio, actividad que lo ocupa y costo estimado.
+
+### Catering
+- ➕ Se pide con **24 h de anticipación**; mismo día, máximo 8 h. **Total = precio por persona × asistentes** (lo calcula el service).
+- ➕ Lugar: dentro de una **reserva** del mismo cliente (no vuelve a bloquear el espacio), en un **espacio libre** del CFC (lo bloquea), o **externo**.
+  Con espacio, asistentes ≤ capacidad.
+- `PENDIENTE → CONFIRMADA → ATENDIDA`; `PENDIENTE → RECHAZADA`; `PENDIENTE/CONFIRMADA → CANCELADA`.
+
+### Cotizaciones
+- ➕ Con **líneas** que referencian el catálogo (curso/diplomado por participante, espacio por hora, catering por persona, u OTRO).
+  El tipo define qué líneas admite; **servicio combinado** exige al menos dos servicios distintos.
+- El precio sugerido sale del catálogo; ➕ solo el personal negocia precio, descuento (≤ subtotal) y vigencia (15 días por defecto).
+- `PENDIENTE → EN_PROCESO → APROBADA` (**solo ADMIN**; exige total > 0, vigencia, catálogo activo; genera la cuenta) o `RECHAZADA`.
+  ➕ El cliente puede retirar la suya; el ADMIN puede anular una aprobación sin pagos; las vencidas se rechazan solas.
+- Una cotización no reserva, no agenda y no inscribe: lo contratado se registra en su módulo.
+
+### Agenda institucional
+- Única fuente de la regla **"no podrán existir conflictos de horario"**. Antes de buscar cruces se bloquea la fila del espacio
+  (`SELECT … FOR UPDATE`). Rangos pegados (08–10 y 10–12) no chocan.
+- ➕ **Eventos** del CFC (graduaciones, conferencias): futuros, 30 min–12 h, con espacio (lo bloquean) o lugar externo.
+- Un CLIENTE ve cursos, diplomados y eventos, y solo sus alquileres y catering.
+
+### Pagos
+- La **cuenta por cobrar** la crea el sistema al confirmar/aprobar (nadie escribe montos a mano). Monto 0 → nace PAGADA.
+- **Abonos**: nunca exceden el saldo (contando lo que está en validación). Transferencia/depósito exigen referencia única.
+  - CLIENTE: solo transferencia/depósito → `PENDIENTE_VALIDACION`.
+  - RECEPCIONISTA: efectivo/tarjeta quedan confirmados; transferencia/depósito a validación.
+  - CONTABILIDAD/ADMIN: validados al registrar; validan, rechazan (motivo) o anulan (error de registro) abonos.
+- Estado de la cuenta: `PENDIENTE → PARCIAL → PAGADO` (➕ `ANULADO` si el proceso se cancela sin dinero; se conserva para auditoría).
+- **Comprobante** con correlativo `CFC-AAAA-000123` para cada abono validado.
+- **Sin reembolsos**: no se cancela un proceso con dinero cobrado o en validación. Nada se finaliza sin estar PAGADO.
+
+### Cierre automático (cada 15 min y en el último abono)
+- Inscripción CONFIRMADA + oferta terminada + pagada → FINALIZADA. Reserva / catering confirmados + horario terminado + pagados → COMPLETADA / ATENDIDA.
+- ➕ Lo que nadie confirmó a tiempo se cancela solo (inscripción pendiente de una oferta ya terminada; reserva o catering pendiente cuya hora ya llegó) y libera la agenda.
+- ➕ Cotizaciones abiertas vencidas → RECHAZADA.
+
+---
+
+## 5. Convenciones de la API
+
+- **Listados**: todos paginados → `{content, page, size, totalElements, totalPages, first, last, sort}`.
+  `page` desde 0, `size` 1–100, `sort=campo,asc|desc` (varios con `;`). Los campos ordenables están en una **lista blanca**
+  por módulo (ej. `cliente` → `cliente.nombre`); otro campo → 400 con la lista válida.
+- **Filtros** como query params (`@ParameterObject`): Swagger los muestra como cajas de texto.
+- `DELETE` en catálogos = **desactivar** (borrado lógico) + `PATCH /{id}/activar`. En procesos = **cancelar** (`?motivo=`).
+- Errores siempre con `ErrorResponse {timestamp, status, error, code, message, path, details}`:
+
+| code | HTTP | Cuándo |
+|---|---|---|
+| VALIDATION_ERROR / MALFORMED_REQUEST / INVALID_PARAMETER | 400 | DTO inválido, JSON roto, campo desconocido, enum o fecha mal escritos |
+| BUSINESS_RULE | 400 | regla de negocio (virtual con aula, fecha pasada, capacidad...) |
+| NO_TOKEN / TOKEN_* / BAD_CREDENTIALS / ACCOUNT_DISABLED | 401 | autenticación |
+| ACCESS_DENIED / FORBIDDEN_OPERATION | 403 | rol insuficiente / registro de otro cliente |
+| NOT_FOUND / ROUTE_NOT_FOUND | 404 | no existe |
+| DUPLICATE, STATE_CONFLICT, INVALID_TRANSITION, SPACE_OCCUPIED, TEACHER_BUSY, CAPACITY_EXCEEDED, CONCURRENT_MODIFICATION | 409 | choca con el estado actual |
+| INTERNAL_ERROR | 500 | inesperado (se registra en el log, no se filtra el detalle) |
+
+- Fechas `AAAA-MM-DD`, fecha-hora `AAAA-MM-DDTHH:mm`, horas `HH:mm`; zona America/El_Salvador (reloj único `Clock`).
+- Reglas configurables en `application.properties` (`app.reglas.*`): anticipación de catering, horas para que el cliente cancele, vigencia de cotizaciones.
+
+---
+
+## 6. Pruebas unitarias (JUnit 5 + Mockito)
+
+| Clase | Qué prueba |
+|---|---|
+| `AgendaServiceTest` | **éxito** con aula libre; **solapamiento** → `EspacioOcupadoException`; catering dentro de reserva no bloquea; exclusión del propio registro |
+| `CursoServiceTest` | **aula para curso virtual rechazada**; presencial sin aula; cupo > capacidad; sesiones cruzadas; fecha pasada; **docente ocupado**; una actividad de agenda por sesión |
+| `ReservaServiceTest` | costo horas × precio; espacio ocupado; capacidad; duración; dueño del registro (403); sin reembolsos; confirmar genera la cuenta |
+| `InscripcionServiceTest` | cupo lleno; curso XOR diplomado; empresa sin participante; duplicado; oferta desactivada; confirmar genera la cuenta; transición inválida |
+| `PagoServiceTest` | abono > saldo; cliente sin efectivo; referencia obligatoria; efectivo salda y dispara cierre; parcial; transferencia pendiente; sin reembolsos; monto 0 |
+| `ReglasCompartidasTest` | cruces de horario, máquina de estados, paginación con lista blanca |
+
+---
+
+## 7. Frontend
+
+`index.html` (oferta pública), `login.html` (login, registro, recuperación) y `app.html` (aplicación por rol).
+JS puro sin frameworks: `config.js` (URL del backend: mismo origen o `http://localhost:8080` con CORS), `api.js` (token + refresh automático), `ui.js` (tablas paginadas, filtros, formularios, modales),
+`vistas-*.js` por módulo. El menú y los botones dependen del rol y de `accionesPosibles` que devuelve el backend, pero
+**la seguridad real siempre la aplica el backend**.
